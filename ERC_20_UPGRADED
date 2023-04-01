@@ -1,0 +1,138 @@
+// SPDX-License-Identifier: GPL-3.0
+
+pragma solidity >=0.7.0 <0.9.0;
+
+interface IERC20{
+    function totalSupply() external view returns(uint256);
+    function balanceOf(address account) external view returns(uint256);
+    function transfer(address recipient , uint tokens) external returns (bool);
+    function allowance(address tokenOwner, address spender) external view returns(uint);
+     function approve(address spender, uint tokens) external  returns (bool success);
+     function transferFrom(address from, address to, uint tokens) external returns (bool success);
+
+    
+
+}
+contract MNB20contract is IERC20{
+    string public name ="MNBCoin";
+    string public symbol ="MNB20";
+    uint public decimals =0;
+
+    uint public constant tokensPerEth = 100; // price of 1 token = 1/100 eth
+
+    event Approval(address owner, address spender, uint256 value);
+    event  Transfer(address _from , address _to , uint tokens);
+    event BuyToken(address buyer,uint ethAmount,uint tokenAmount);
+
+
+   // address public founder;
+    mapping(address => uint)  balances;
+    // balances[0x1111...] = 100;
+    
+    mapping(address => mapping(address => uint)) allowed;
+    // allowed[0x111][0x222] = 100;
+    
+    uint _totalSupply = 1000 ;
+    address owner;
+    
+  
+
+    
+     modifier onlyOwner(){
+    require(owner == msg.sender,  "You are not the owner");
+    _;
+
+}
+    constructor()  {
+        balances[msg.sender] = _totalSupply;
+        owner = msg.sender;
+        
+        
+    }
+
+       
+//balanceOf(address account) → uint256 Returns the amount of tokens owned by account.
+        function balanceOf(address tokenOwner) public view override returns (uint balance){
+        return balances[tokenOwner];
+    }
+
+    // transfer(address recipient, uint256 amount) → bool Moves amount tokens from the caller’s account to recipient. 
+//Returns a boolean value indicating whether the operation succeeded. 
+//Emits a Transfer event.
+    function transfer(address to, uint256 tokens) public  override  returns(bool success){
+        require(balances[msg.sender] >= tokens);
+        balances[msg.sender] -= tokens;
+        balances[to] += tokens;
+    
+        emit Transfer(msg.sender, to, tokens);
+        
+    
+    return true;
+    //totalSupply of the tokenowner
+    }
+    function totalSupply() public override view returns(uint){
+        return _totalSupply;
+
+    }
+       
+//Returns the amount which _spender is still allowed to withdraw from _owner
+//supppose tokenowner had given 50 tokens to spender or allowed to spend and he spent only 30
+//tokens so the rest 20 tokens will be returning here.
+    function allowance(address tokenOwner, address spender) view public override returns(uint){
+        return allowed[tokenOwner][spender];
+    }
+
+    //approve(address spender, uint256 amount) → bool Sets amount as the allowance of spender over the caller’s tokens.
+ // Returns a boolean value indicating whether the operation succeeded. Emits an Approval event.   
+    function approve(address spender, uint tokens) public override returns (bool success){
+        require(balances[msg.sender] >= tokens);
+        require(tokens > 0);
+        
+        allowed[msg.sender][spender] = tokens;
+        
+        emit Approval(msg.sender, spender, tokens);
+        return true;
+    }
+// transfer tokens on the behalf of tokenowner and it will be called by spender only in from
+// address comes tokenOwner address and in to comes to whom you want to send.
+    function transferFrom(address from, address to, uint tokens) public override returns (bool success){
+         require(allowed[from][msg.sender] >= tokens); //allowance function is called to check for remaing tokens
+         require(balances[from] >= tokens);
+         
+         balances[from] -= tokens;
+         allowed[from][msg.sender] -= tokens;
+         balances[to] += tokens;
+ 
+         emit Transfer(from, to, tokens);
+         
+         return true;
+     }
+
+
+     function mint( uint _qty) public onlyOwner  returns(uint) {
+         _totalSupply += _qty;
+         balances[msg.sender] += _qty;
+         return _totalSupply;
+     }
+     
+     function burn(uint _qty) public onlyOwner returns (uint){
+         require(balances[msg.sender] >= _qty);
+         _totalSupply -= _qty;
+         balances[msg.sender] -= _qty;
+         return _totalSupply;
+
+     }
+     
+
+     function buyToken() public payable{
+         require(msg.value > 0,"send some eth to buy tokens");
+         address user = msg.sender;
+         uint ethAmount = msg.value;
+         uint tokenAmount = ethAmount * tokensPerEth;
+
+         emit BuyToken(user,ethAmount,tokenAmount);
+
+     }
+
+
+}
